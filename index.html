@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#6e48aa">
+    <meta name="description" content="Coding Tutor Reminder - Manage your tutees and schedule">
+    <title>Coding Tutor Reminder</title>
+    <link rel="manifest" href="/manifest.json">
+     <link rel="manifest" href="/sw.js">
+    <link rel="icon" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <style>
+        /* [Your existing CSS remains exactly the same] */
+                :root {
+            --primary: #6e48aa;
+            --secondary: #9d50bb;
+            --dark: #1a1a2e;
+            --darker: #16213e;
+            --light: #e2e2e2;
+            --accent: #f39c12;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--darker), var(--dark));
+            color: var(--light);
+            padding: 10px;
+            width: 100%;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 8px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .app-description {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+            color: var(--accent);
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 6px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+            width: 100%;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--light);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 0.9rem;
+        }
+
+        button {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .tutee-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        .tutee-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid var(--secondary);
+            font-size: 0.9rem;
+        }
+
+        .tutee-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .tutee-time {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .delete-btn {
+            background: #e74c3c;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-top: 12px;
+            width: 100%;
+        }
+
+        .day-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .day.free {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid rgba(46, 204, 113, 0.5);
+        }
+
+        .day.busy {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid rgba(231, 76, 60, 0.5);
+        }
+
+        .day.today {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        /* Add this new CSS for install prompt */
+        #installContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            transform: translateX(200%);
+            transition: transform 0.3s ease;
+        }
+        
+        #installContainer.show {
+            transform: translateX(0);
+        }
+        
+        #installButton {
+            background: white;
+            color: var(--primary);
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        #closeInstall {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .offline-status {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #e74c3c;
+            color: white;
+            text-align: center;
+            padding: 5px;
+            z-index: 1001;
+            display: none;
+        }
+
+        .notification {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            z-index: 1000;
+            transform: translateX(200%);
+            transition: transform 0.3s ease;
+            max-width: 80%;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .close-notification {
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .quote-container {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+            font-size: 0.9rem;
+        }
+
+        .quote-text {
+            font-style: italic;
+            margin-bottom: 4px;
+        }
+
+        .quote-author {
+            text-align: right;
+            font-weight: bold;
+            opacity: 0.7;
+            font-size: 0.8rem;
+        }
+
+        .busy-days-list {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            width: 100%;
+        }
+
+        .busy-day {
+            background: rgba(231, 76, 60, 0.2);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-status" id="offlineStatus">You are currently offline. App is running in limited mode.</div>
+    
+    <div class="container">
+        <!-- [Your existing HTML content remains exactly the same] -->
+
+        <div class="container">
+        <header>
+            <h1>🧑‍🏫 Coding Tutor Reminder</h1>
+            <p class="app-description">Manage your tutees and schedule</p>
+        </header>
+
+        <div class="main-content">
+            <div class="card">
+                <h2 class="card-title">Add New Tutee</h2>
+                <div class="form-group">
+                    <label for="tutee-name">Tutee Name</label>
+                    <input type="text" id="tutee-name" placeholder="Enter name">
+                </div>
+                <div class="form-group">
+                    <label for="tutee-day">Day</label>
+                    <select id="tutee-day">
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                        <option value="Sunday">Sunday</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tutee-time">Time</label>
+                    <input type="time" id="tutee-time">
+                </div>
+                <button id="add-tutee">Add Tutee</button>
+
+                <h2 class="card-title" style="margin-top: 20px;">Your Tutees</h2>
+                <div class="tutee-list" id="tutee-list">
+                    <!-- Tutees will be added here -->
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Your Schedule</h2>
+                <div class="form-group">
+                    <label>Mark Busy Days</label>
+                    <div class="busy-days-list" id="busy-days-list">
+                        <!-- Busy days will be shown here -->
+                    </div>
+                </div>
+                <div class="calendar" id="calendar">
+                    <!-- Calendar will be generated here -->
+                </div>
+
+                <div class="quote-container" id="quote-container" style="display: none;">
+                    <p class="quote-text" id="quote-text"></p>
+                    <p class="quote-author" id="quote-author"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <div class="notification" id="notification">
+        <span id="notification-message"></span>
+        <span class="close-notification" id="close-notification">×</span>
+    </div>
+    
+    <div id="installContainer">
+        <span>Install Tutor Reminder App?</span>
+        <button id="installButton">Install</button>
+        <span id="closeInstall">×</span>
+    </div>
+
+    <script> document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const tuteeNameInput = document.getElementById('tutee-name');
+            const tuteeDaySelect = document.getElementById('tutee-day');
+            const tuteeTimeInput = document.getElementById('tutee-time');
+            const addTuteeBtn = document.getElementById('add-tutee');
+            const tuteeList = document.getElementById('tutee-list');
+            const busyDaysList = document.getElementById('busy-days-list');
+            const calendar = document.getElementById('calendar');
+            const notification = document.getElementById('notification');
+            const notificationMessage = document.getElementById('notification-message');
+            const closeNotification = document.getElementById('close-notification');
+            const quoteContainer = document.getElementById('quote-container');
+            const quoteText = document.getElementById('quote-text');
+            const quoteAuthor = document.getElementById('quote-author');
+
+            // Data
+            let tutees = JSON.parse(localStorage.getItem('tutees')) || [];
+            let busyDays = JSON.parse(localStorage.getItem('busyDays')) || [];
+            const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+            // Motivational quotes
+            const quotes = [
+                {
+                    text: "The only way to learn a new programming language is by writing programs in it.",
+                    author: "Dennis Ritchie"
+                },
+                {
+                    text: "First, solve the problem. Then, write the code.",
+                    author: "John Johnson"
+                },
+                {
+                    text: "Any fool can write code that a computer can understand. Good programmers write code that humans can understand.",
+                    author: "Martin Fowler"
+                }
+            ];
+
+            // Initialize the app
+            function init() {
+                renderTutees();
+                renderBusyDays();
+                renderCalendar();
+                checkFreeDay();
+            }
+
+            // Add a new tutee
+            addTuteeBtn.addEventListener('click', function() {
+                const name = tuteeNameInput.value.trim();
+                const day = tuteeDaySelect.value;
+                const time = tuteeTimeInput.value;
+
+                if (!name || !time) {
+                    showNotification('Please fill all fields');
+                    return;
+                }
+
+                const newTutee = {
+                    id: Date.now(),
+                    name,
+                    day,
+                    time
+                };
+
+                tutees.push(newTutee);
+                saveTutees();
+                renderTutees();
+
+                // Add the day to busy days if not already there
+                if (!busyDays.includes(day)) {
+                    busyDays.push(day);
+                    saveBusyDays();
+                    renderBusyDays();
+                    renderCalendar();
+                }
+
+                // Reset form
+                tuteeNameInput.value = '';
+                tuteeTimeInput.value = '';
+                showNotification('Tutee added!');
+            });
+
+            // Delete a tutee
+            function deleteTutee(id) {
+                tutees = tutees.filter(tutee => tutee.id !== id);
+                saveTutees();
+                renderTutees();
+                updateBusyDaysBasedOnTutees();
+                renderCalendar();
+                showNotification('Tutee removed');
+            }
+
+            // Update busy days based on remaining tutees
+            function updateBusyDaysBasedOnTutees() {
+                const daysWithTutees = [...new Set(tutees.map(tutee => tutee.day))];
+                busyDays = busyDays.filter(day => daysWithTutees.includes(day));
+                saveBusyDays();
+                renderBusyDays();
+            }
+
+            // Toggle busy day
+            function toggleBusyDay(day) {
+                if (busyDays.includes(day)) {
+                    // Check if there are tutees on this day
+                    const hasTutees = tutees.some(tutee => tutee.day === day);
+                    if (hasTutees) {
+                        showNotification('Cannot unset busy day with tutees');
+                        return;
+                    }
+                    busyDays = busyDays.filter(d => d !== day);
+                } else {
+                    busyDays.push(day);
+                }
+                saveBusyDays();
+                renderBusyDays();
+                renderCalendar();
+                checkFreeDay();
+            }
+
+            // Render tutees list
+            function renderTutees() {
+                if (tutees.length === 0) {
+                    tuteeList.innerHTML = '<p>No tutees yet</p>';
+                    return;
+                }
+
+                tuteeList.innerHTML = '';
+                tutees.forEach(tutee => {
+                    const tuteeItem = document.createElement('div');
+                    tuteeItem.className = 'tutee-item';
+                    tuteeItem.innerHTML = `
+                        <div class="tutee-info">
+                            <div class="tutee-name">${tutee.name}</div>
+                            <div class="tutee-time">${tutee.day} at ${formatTime(tutee.time)}</div>
+                        </div>
+                        <div class="delete-btn" onclick="deleteTutee(${tutee.id})">×</div>
+                    `;
+                    tuteeList.appendChild(tuteeItem);
+                });
+            }
+
+            // Render busy days
+            function renderBusyDays() {
+                busyDaysList.innerHTML = '';
+                daysOfWeek.forEach(day => {
+                    const dayElement = document.createElement('span');
+                    dayElement.className = `busy-day ${busyDays.includes(day) ? 'active' : ''}`;
+                    dayElement.textContent = day.substring(0, 3);
+                    dayElement.title = day;
+                    dayElement.onclick = () => toggleBusyDay(day);
+                    busyDaysList.appendChild(dayElement);
+                });
+            }
+
+            // Render calendar
+            function renderCalendar() {
+                calendar.innerHTML = '';
+
+                // Add day headers
+                daysOfWeek.forEach(day => {
+                    const dayHeader = document.createElement('div');
+                    dayHeader.className = 'day-header';
+                    dayHeader.textContent = day.substring(0, 3);
+                    calendar.appendChild(dayHeader);
+                });
+
+                // Add days
+                const today = new Date();
+                const currentDay = daysOfWeek[today.getDay()];
+
+                daysOfWeek.forEach(day => {
+                    const dayElement = document.createElement('div');
+                    dayElement.className = `day ${busyDays.includes(day) ? 'busy' : 'free'} ${day === currentDay ? 'today' : ''}`;
+                    dayElement.textContent = day.substring(0, 1);
+                    dayElement.title = day;
+                    dayElement.onclick = () => toggleBusyDay(day);
+                    calendar.appendChild(dayElement);
+                });
+            }
+
+            // Check if today is a free day
+            function checkFreeDay() {
+                const today = new Date();
+                const todayName = daysOfWeek[today.getDay()];
+
+                if (!busyDays.includes(todayName)) {
+                    showNotification(`Today (${todayName}) is free!`);
+                    showRandomQuote();
+                }
+            }
+
+            // Show a random quote
+            function showRandomQuote() {
+                const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+                quoteText.textContent = randomQuote.text;
+                quoteAuthor.textContent = `— ${randomQuote.author}`;
+                quoteContainer.style.display = 'block';
+            }
+
+            // Show notification
+            function showNotification(message) {
+                notificationMessage.textContent = message;
+                notification.classList.add('show');
+
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+
+            // Close notification
+            closeNotification.addEventListener('click', function() {
+                notification.classList.remove('show');
+            });
+
+            // Format time
+            function formatTime(timeStr) {
+                if (!timeStr) return '';
+                const [hours, minutes] = timeStr.split(':');
+                const hour = parseInt(hours);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const hour12 = hour % 12 || 12;
+                return `${hour12}:${minutes} ${ampm}`;
+            }
+
+            // Save tutees to localStorage
+            function saveTutees() {
+                localStorage.setItem('tutees', JSON.stringify(tutees));
+            }
+
+            // Save busy days to localStorage
+            function saveBusyDays() {
+                localStorage.setItem('busyDays', JSON.stringify(busyDays));
+            }
+
+            // Make deleteTutee available globally
+            window.deleteTutee = deleteTutee;
+
+            // Initialize the app
+            init();
+        });
+        // [Your existing JavaScript remains the same until the end]
+        // Add this new code after your existing JavaScript
+        
+        // ===== PWA Functionality =====
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+
+        // Offline Status Detection
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        function updateOnlineStatus() {
+            const offlineStatus = document.getElementById('offlineStatus');
+            if (navigator.onLine) {
+                offlineStatus.style.display = 'none';
+                showNotification('Back online!');
+            } else {
+                offlineStatus.style.display = 'block';
+                showNotification('Working offline. Some features may be limited.');
+            }
+        }
+
+        // Install Prompt
+        let deferredPrompt;
+        const installContainer = document.getElementById('installContainer');
+        const installButton = document.getElementById('installButton');
+        const closeInstall = document.getElementById('closeInstall');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installContainer.classList.add('show');
+            
+            // Automatically hide after 10 seconds
+            setTimeout(() => {
+                installContainer.classList.remove('show');
+            }, 10000);
+        });
+
+        installButton.addEventListener('click', () => {
+            installContainer.classList.remove('show');
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted install prompt');
+                } else {
+                    console.log('User dismissed install prompt');
+                }
+                deferredPrompt = null;
+            });
+        });
+
+        closeInstall.addEventListener('click', () => {
+            installContainer.classList.remove('show');
+        });
+
+        // Check if app is running in standalone mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('Running in standalone mode');
+        }
+
+        // Initialize online status
+        updateOnlineStatus();
+
+        if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('✅ Service Worker registered:', registration.scope);
+        })
+        .catch(error => {
+          console.log('❌ Service Worker registration failed:', error);
+        });
+    });
+  }
+
+    </script>
+</body>
+</html>
